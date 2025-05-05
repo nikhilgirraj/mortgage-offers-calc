@@ -43,7 +43,6 @@ def calculate_emi_tiered(principal, rate_periods):
 
     return results
 
-
 def run_tiered_loan_scenario(principal, rate_periods):
     schedule = calculate_emi_tiered(principal, rate_periods)
     total_paid_all = 0
@@ -60,28 +59,38 @@ def run_tiered_loan_scenario(principal, rate_periods):
 
     tiers_description = ", then ".join([tier_str(t) for t in rate_periods])
     print(f"\nScenario for Loan: €{principal} with rates: {tiers_description}")
-    print("------------------------------------------------------------")
+    print("--------------------------------------------------------------------------")
 
+    # Table Header
+    header = f"{'Period':<18}{'Installment':>14}{'Eff. Install.':>16}{'Total Paid':>14}{'Interest':>12}{'Balance':>14}"
+    print(header)
+    print("-" * len(header))
+
+    # Table Rows
     for idx, period in enumerate(schedule):
         tier = rate_periods[idx]
-        line = (f"{period['period']}: Installment = €{period['installment']}, "
-                f"Total Paid in Period = €{period['total_paid']}, "
-                f"Interest Paid = €{period['interest_paid']}, "
-                f"Balance Left = €{period['ending_balance']}")
-
+        months = tier['years'] * 12
+        eff_installment = ''
         if period['cashback']:
-            months = tier['years'] * 12
-            effective_installment = (period['total_paid'] - period['cashback']) / months
-            line += f", Effective Installment = €{round(effective_installment, 2)}"
+            effective = (period['total_paid'] - period['cashback']) / months
+            eff_installment = f"€{round(effective, 2):,.2f}"
+        else:
+            eff_installment = "-"
 
-        print(line)
+        print(f"{period['period']:<18}"
+              f"€{period['installment']:>12,.2f}"
+              f"{eff_installment:>16}"
+              f"€{period['total_paid']:>12,.2f}"
+              f"€{period['interest_paid']:>10,.2f}"
+              f"€{period['ending_balance']:>13,.2f}")
 
         total_paid_all += period['total_paid']
         total_cashback += period['cashback']
 
     net_paid = total_paid_all - total_cashback
 
-    print(f"\nTotal Paid Over All Installments: €{round(total_paid_all, 2)} over {total_years} years")
+    print("-" * len(header))
+    print(f"Total Paid Over All Installments: €{round(total_paid_all, 2)} over {total_years} years")
     if total_cashback > 0:
-        print(f"Total Cashback Received: €{round(total_cashback, 2)}")
-        print(f"Net Cost to Borrower: €{round(net_paid, 2)}\n")
+        print(f"Total Cashback Received:         €{round(total_cashback, 2)}")
+        print(f"Net Cost to Borrower:            €{round(net_paid, 2)}\n")
