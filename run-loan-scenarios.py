@@ -1,23 +1,15 @@
-# Author: Nikhil
-
 def calculate_emi_tiered(principal, rate_periods):
-    """
-    Calculate EMI payments for tiered interest rates where EMI is based on remaining tenure.
-
-    :param principal: Initial loan amount
-    :param rate_periods: List of tuples [(rate1, years1), (rate2, years2), ...]
-    :return: List of dicts with EMI info for each period
-    """
-    results = []
-    total_months_remaining = sum(years for _, years in rate_periods) * 12
+    total_months_remaining = sum(tier['years'] for tier in rate_periods) * 12
     start_year = 0
+    results = []
 
-    for rate, years in rate_periods:
+    for tier in rate_periods:
+        rate = tier['rate']
+        years = tier['years']
         months_in_tier = years * 12
         monthly_rate = rate / (12 * 100)
 
-        # EMI calculated using remaining principal and remaining total months
-        installment = (principal * monthly_rate * (1 + monthly_rate) ** total_months_remaining) / \
+        emi = (principal * monthly_rate * (1 + monthly_rate) ** total_months_remaining) / \
               ((1 + monthly_rate) ** total_months_remaining - 1)
 
         total_payment = 0
@@ -25,15 +17,15 @@ def calculate_emi_tiered(principal, rate_periods):
 
         for _ in range(months_in_tier):
             interest = principal * monthly_rate
-            principal_payment = installment - interest
+            principal_payment = emi - interest
             principal -= principal_payment
             interest_paid += interest
-            total_payment += installment
+            total_payment += emi
             total_months_remaining -= 1
 
         results.append({
             "period": f"Year {start_year + 1} to {start_year + years}",
-            "installment": round(installment, 2),
+            "installment": round(emi, 2),
             "total_paid": round(total_payment, 2),
             "interest_paid": round(interest_paid, 2),
             "ending_balance": round(principal, 2)
@@ -47,17 +39,22 @@ def calculate_emi_tiered(principal, rate_periods):
 def run_tiered_loan_scenario(principal, rate_periods):
     """
     Run and display tiered loan scenario results.
-
+    
     :param principal: Loan amount (e.g. 500000)
     :param rate_periods: List of tuples [(rate%, years), ...]
     """
+    
     schedule = calculate_emi_tiered(principal, rate_periods)
     total_paid_all = 0
 
-    tiers_str = ", then ".join([f"{rate}% for {years} year{'s' if years > 1 else ''}" for rate, years in rate_periods])
-    print(f"\nScenario for Loan: €{principal} with rates: {tiers_str}")
+    # Format tier info nicely
+    def tier_str(tier):
+        return f"{tier['rate']}% for {tier['years']} year{'s' if tier['years'] > 1 else ''}"
 
+    tiers_description = ", then ".join([tier_str(t) for t in rate_periods])
+    print(f"\nScenario for Loan: €{principal} with rates: {tiers_description}")
     print("------------------------------------------------------------")
+
     for period in schedule:
         print(f"{period['period']}: Installment = €{period['installment']}, "
               f"Total Paid in Period = €{period['total_paid']}, "
@@ -66,5 +63,4 @@ def run_tiered_loan_scenario(principal, rate_periods):
         total_paid_all += period['total_paid']
 
     print(f"\nTotal Paid Over All Installments: €{round(total_paid_all, 2)}\n")
-    
-    
+
