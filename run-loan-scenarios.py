@@ -43,54 +43,58 @@ def calculate_emi_tiered(principal, rate_periods):
 
     return results
 
+import pandas as pd
+
 def run_tiered_loan_scenario(principal, rate_periods):
     schedule = calculate_emi_tiered(principal, rate_periods)
     total_paid_all = 0
     total_cashback = 0
     total_years = sum(tier['years'] for tier in rate_periods)
 
-    def tier_str(tier):
-        parts = [f"{tier['rate']}% for {tier['years']} year{'s' if tier['years'] > 1 else ''}"]
-        if 'cashback' in tier:
-            parts.append(f"€{tier['cashback']} cashback")
-        if 'lump_sum' in tier:
-            parts.append(f"€{tier['lump_sum']} lump sum")
-        return ", ".join(parts)
+    data_rows = []
 
-    tiers_description = ", then ".join([tier_str(t) for t in rate_periods])
-    print(f"\nScenario for Loan: €{principal} with rates: {tiers_description}")
-    print("--------------------------------------------------------------------------")
-
-    # Table Header
-    header = f"{'Period':<18}{'Installment':>14}{'Eff. Install.':>16}{'Total Paid':>14}{'Interest':>12}{'Balance':>14}"
-    print(header)
-    print("-" * len(header))
-
-    # Table Rows
     for idx, period in enumerate(schedule):
         tier = rate_periods[idx]
         months = tier['years'] * 12
-        eff_installment = ''
+
+        effective = None
         if period['cashback']:
             effective = (period['total_paid'] - period['cashback']) / months
-            eff_installment = f"€{round(effective, 2):,.2f}"
-        else:
-            eff_installment = "-"
 
-        print(f"{period['period']:<18}"
-              f"€{period['installment']:>12,.2f}"
-              f"{eff_installment:>16}"
-              f"€{period['total_paid']:>12,.2f}"
-              f"€{period['interest_paid']:>10,.2f}"
-              f"€{period['ending_balance']:>13,.2f}")
+        data_rows.append({
+            "Period": period['period'],
+            "Rate (%)": tier['rate'],
+            "Installment (€)": period['installment'],
+            "Effective Installment (€)": round(effective, 2) if effective else None,
+            "Total Paid (€)": period['total_paid'],
+            "Interest Paid (€)": period['interest_paid'],
+            "Ending Balance (€)": period['ending_balance'],
+            "Lump Sum (€)": tier.get('lump_sum', 0.0)
+        })
 
         total_paid_all += period['total_paid']
         total_cashback += period['cashback']
 
-    net_paid = total_paid_all - total_cashback
+    df = pd.DataFrame(data_rows)
 
-    print("-" * len(header))
-    print(f"Total Paid Over All Installments: €{round(total_paid_all, 2)} over {total_years} years")
+    # Format floats with € symbol where appropriate
+    pd.options.display.float_format = lambda x: f"€{x:,.2f}"
+
+    # Description of the tiers
+    def tier_str(tier):
+        parts = [f"{tier['rate']}% for {tier['years']} year{'s' if tier['years'] > 1 else ''}"]
+        if 'cashback' in tier:
+            parts.append(f"with €{tier['cashback']} cashback")
+        if 'lump_sum' in tier:
+            parts.append(f"€{tier['lump_sum']} lump sum")
+        return " ".join(parts)
+
+    tiers_description = ", then ".join([tier_str(t) for t in rate_periods])
+    print(f"\nScenario for Loan: €{principal} with rates: {tiers_description}\n")
+
+    print(df.to_string(index=False))
+
+    print(f"\nTotal Paid Over All Installments: €{round(total_paid_all, 2)} over {total_years} years")
     if total_cashback > 0:
         print(f"Total Cashback Received:         €{round(total_cashback, 2)}")
-        print(f"Net Cost to Borrower:            €{round(net_paid, 2)}\n")
+        print(f"Net Cost to Borrower:            €{round(total_paid_all - total_cashback, 2)}")
