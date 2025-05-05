@@ -45,6 +45,9 @@ def calculate_emi_tiered(principal, rate_periods):
 
 import pandas as pd
 
+# Global currency symbol
+CURRENCY = "€"
+
 def run_tiered_loan_scenario(principal, rate_periods):
     schedule = calculate_emi_tiered(principal, rate_periods)
     total_paid_all = 0
@@ -64,12 +67,12 @@ def run_tiered_loan_scenario(principal, rate_periods):
         data_rows.append({
             "Period": period['period'],
             "Rate (%)": tier['rate'],
-            "Installment (€)": period['installment'],
-            "Effective Installment (€)": round(effective, 2) if effective else None,
-            "Total Paid (€)": period['total_paid'],
-            "Interest Paid (€)": period['interest_paid'],
-            "Ending Balance (€)": period['ending_balance'],
-            "Lump Sum (€)": tier.get('lump_sum', 0.0)
+            f"Installment ({CURRENCY})": period['installment'],
+            f"Effective Installment ({CURRENCY})": round(effective, 2) if effective else None,
+            f"Total Paid ({CURRENCY})": period['total_paid'],
+            f"Interest Paid ({CURRENCY})": period['interest_paid'],
+            f"Ending Balance ({CURRENCY})": period['ending_balance'],
+            f"Lump Sum ({CURRENCY})": tier.get('lump_sum', 0.0)
         })
 
         total_paid_all += period['total_paid']
@@ -77,24 +80,24 @@ def run_tiered_loan_scenario(principal, rate_periods):
 
     df = pd.DataFrame(data_rows)
 
-    # Format floats with € symbol where appropriate
-    pd.options.display.float_format = lambda x: f"€{x:,.2f}"
+    # Currency formatting
+    pd.options.display.float_format = lambda x: f"{CURRENCY}{x:,.2f}"
 
-    # Description of the tiers
+    # Tiers description string
     def tier_str(tier):
         parts = [f"{tier['rate']}% for {tier['years']} year{'s' if tier['years'] > 1 else ''}"]
         if 'cashback' in tier:
-            parts.append(f"with €{tier['cashback']} cashback")
+            parts.append(f"{CURRENCY}{tier['cashback']} cashback")
         if 'lump_sum' in tier:
-            parts.append(f"€{tier['lump_sum']} lump sum")
-        return " ".join(parts)
+            parts.append(f"{CURRENCY}{tier['lump_sum']} lump sum")
+        return ", ".join(parts)
 
     tiers_description = ", then ".join([tier_str(t) for t in rate_periods])
-    print(f"\nScenario for Loan: €{principal} with rates: {tiers_description}\n")
+    print(f"\nScenario for Loan: {CURRENCY}{principal} with rates: {tiers_description}\n")
 
     print(df.to_string(index=False))
 
-    print(f"\nTotal Paid Over All Installments: €{round(total_paid_all, 2)} over {total_years} years")
+    print(f"\nTotal Paid Over All Installments: {CURRENCY}{round(total_paid_all, 2)} over {total_years} years")
     if total_cashback > 0:
-        print(f"Total Cashback Received:         €{round(total_cashback, 2)}")
-        print(f"Net Cost to Borrower:            €{round(total_paid_all - total_cashback, 2)}")
+        print(f"Total Cashback Received:         {CURRENCY}{round(total_cashback, 2)}")
+        print(f"Net Cost to Borrower:            {CURRENCY}{round(total_paid_all - total_cashback, 2)}")
